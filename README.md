@@ -13,7 +13,7 @@ As an aspiring data engineer, I built this project to demonstrate my ability to:
 
 This project mimics the typical workflow in a data team: import CSVs, clean anomalies, normalize entities, and deliver a ready-to-query dimensional model.
 
-## 📊 Dataset
+##  Dataset
 Source: [goodbooks-10k on GitHub](https://github.com/zygmuntz/goodbooks-10k). A dataset of 10,000 books, 6M+ ratings, tags, and to-read lists from Goodreads.
 
 ## Original tables:
@@ -23,7 +23,7 @@ Source: [goodbooks-10k on GitHub](https://github.com/zygmuntz/goodbooks-10k). A 
 - `tags.csv`
 - `to_read.csv`
 
-## 🏗️ Architecture & Dual Pipeline
+##  Architecture & Dual Pipeline
 To highlight different Data Engineering techniques, the repository is split into two implementations:
 
 ### 1. PostgreSQL Pipeline (The BI Backend)
