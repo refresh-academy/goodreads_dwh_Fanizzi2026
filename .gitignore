@@ -1,0 +1,9 @@
+# Database files
+goodreads_duckdb
+*.db
+*.duckdb
+*.wal
+
+# Raw Data
+*.csv
+dati_csv/
