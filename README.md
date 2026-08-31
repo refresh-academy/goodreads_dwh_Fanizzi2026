@@ -49,3 +49,33 @@ Built to demonstrate blazing-fast local OLAP analytics, processing 6M+ rows in s
 * **Duplicate Handling:** Resolved via Window Functions (`ROW_NUMBER()`) keeping the most relevant row (e.g., highest rating).
 * **Many-to-Many Relationships:** Resolved via bridge tables (book–authors, book–tags) to avoid inflating fact table aggregations.
 * **Two Fact Tables:** Segregated events into `fact_ratings` (transactional, measurable) and `fact_to_read` (factless, tracking state/intent).
+
+## 📊 Data Visualization & Business Insights (Power BI)
+
+To complete the end-to-end data pipeline, I connected Power BI to the underlying data warehouse to build an interactive dashboard. This layer translates the modeled data into actionable business insights, demonstrating how the backend structure supports front-end analytics.
+
+### 1. Dashboard Overview: Key Metrics & Top Authors
+The initial view provides a high-level snapshot of the dataset's scale and highlights the most critically acclaimed authors.
+
+![Dashboard Overview](data_visualization/dashboard_overview.png)
+
+**Key Insights:**
+* **Massive User Engagement:** The dataset encompasses over 6 million individual ratings across 10,000 books, maintaining a solid average global rating of 3.92.
+* **Top Tier Authors:** Bill Watterson leads the global ranking with a stellar 4.7 average rating, outperforming other highly acclaimed authors.
+
+---
+
+### 2. Popularity vs. Quality (Top 10 Books)
+This visual investigates the relationship between a book's mass appeal (total volume of reviews) and its critical reception (average rating score). 
+
+![Popularity vs Appreciation](data_visualization/populary_vs_appreciation.png)
+
+**Key Insights:**
+* **Volume vs. Score:** The most reviewed books are not necessarily the highest-rated. For example, *The Hunger Games* leads in total reviews, but its average rating is lower compared to some other top 10 blockbusters.
+
+---
+
+### 📂 Explore the Dashboard Files
+For a deeper dive into the Data Visualization phase, all related files are available in the [`data_visualization/`](data_visualization/) directory:
+* 📊 **[Interactive Power BI File (.pbix)](data_visualization/goodreads_datavisualization.pbix)** - The original Power BI Desktop file (under 20MB, containing the data model and DAX measures).
+* 📄 **[Static Dashboard Export (.pdf)](data_visualization/goodreads_fanizzi_datavisualization.pdf)** - A lightweight PDF export, perfect for a quick review without needing Power BI installed.
