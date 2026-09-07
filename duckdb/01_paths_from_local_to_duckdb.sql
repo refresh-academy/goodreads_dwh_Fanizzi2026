@@ -1,8 +1,7 @@
 -- Load the Goodbooks-10k CSV files from the project directory.
 --
 -- Relative paths make this script portable across operating systems.
--- Run DuckDB from the root directory of the project, where the CSV files
--- are located.
+-- Run DuckDB from the root directory of the project, where the CSV files are located.
 
 create table books as
 select *
