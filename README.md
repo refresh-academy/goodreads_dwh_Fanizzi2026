@@ -1,113 +1,321 @@
 # Goodreads Data Warehouse: PostgreSQL & DuckDB
 
-An end-to-end data engineering project: from raw CSV files to an analytical star schema, featuring a dual-engine architecture (PostgreSQL & DuckDB) and a Power BI dashboard.
+An end-to-end data engineering portfolio project that transforms the
+[Goodbooks-10k dataset](https://github.com/zygmuntz/goodbooks-10k) from raw CSV
+files into a Kimball-style dimensional model.
 
-##  How to Run the ETL Pipelines (Execution Guide)
+The project contains two independent SQL implementations:
 
-To ensure full reproducibility and idempotency, this repository features two separate implementations (**DuckDB** and **PostgreSQL**). 
+- **DuckDB** for fast, local analytical processing.
+- **PostgreSQL** as a relational backend, also tested on Microsoft Azure and
+  used as the source for the Power BI report.
 
-### Prerequisites
-1. **Clone the repository** to your local machine.
-2. **Download the Dataset:** Place the original CSV files (`books.csv`, `ratings.csv`, `book_tags.csv`, `tags.csv`, `to_read.csv`) inside a folder named `data/` at the root of the project.
-3. **Install an SQL Client:** Download [DBeaver](https://dbeaver.io/) (Community Edition) to execute the scripts.
+Both pipelines apply comparable data-quality rules and produce dimensions,
+bridge tables, and fact tables for analytical queries.
 
----
-### 🔍 The Data Exploration Phase (EDA)
-You will notice unnumbered exploration scripts in both folders (`goodreads_duckdb_exploration.sql` and `goodreads_query_exploration.sql`). 
+## Project architecture
 
-These scripts are not strictly part of the automated ETL pipeline. Instead, they were designed to be run **after the initial data ingestion and before the transformation phase**. They document the Data Quality assessment (e.g., finding NULLs, handling scientific notation in ISBNs, identifying duplicates) that provided the necessary awareness of the raw data to build the subsequent `transformation` logic.
+```mermaid
+flowchart TD
+    CSV["Goodbooks-10k CSV files"] --> RAW["Raw tables"]
+    RAW --> SILVER["Cleaned transformation tables"]
+    SILVER --> GOLD["Dimensional model"]
+    GOLD --> BI["Power BI / analytical queries"]
+```
 
-### Option A: DuckDB Pipeline (Analytical Engine)
+The dimensional layer is more precisely a **fact constellation** than a strict
+single-star schema: the two fact tables share the books dimension, while bridge
+tables resolve the many-to-many relationships between books, authors, and tags.
 
-To run the high-speed local OLAP pipeline in DBeaver using DuckDB, execute the scripts in **strict numerical order**. The script about exploration will function only for the raw data. This sequence guarantees idempotency (building raw tables, cleaning anomalies, and generating the Kimball star schema):
+## Repository structure
 
-1. `01_paths_from_local_to_duckdb.sql` — Ingests raw data via relative paths.
-2. `02_goodreads_duckdb_transformation.sql` — Cleans data types (e.g., ISBN formatting) and handles missing values/duplicates.
-3. `03_goodreads_bridges_dimensions_facts_duckdb.sql` — Generates surrogate keys and builds the final dimensional star schema.
+```text
+GOODREADS_DWH_FANIZZI2026/
+├── data_visualization/
+│   ├── dashboard_overview.png
+│   ├── goodreads_datavisualization.pbix
+│   ├── goodreads_fanizzi_datavisualization.pdf
+│   └── popularity_vs_appreciation.png
+├── duckdb/
+│   ├── 01_paths_from_local_to_duckdb.sql
+│   ├── 02_goodreads_duckdb_transformation.sql
+│   ├── 03_goodreads_bridges_dimensions_facts_duckdb.sql
+│   ├── goodreads_duckdb
+│   └── goodreads_duckdb_exploration.sql
+├── postgresql/
+│   ├── 01_goodreads_dwh_transformation.sql
+│   ├── 02_goodreads_dimensions_facts.sql
+│   └── goodreads_query_exploration.sql
+├── .gitignore
+└── README.md
+```
 
----
+`duckdb/goodreads_duckdb` is the local DuckDB database file used by the project.
+It can be recreated by running the SQL pipeline, so it does not need to be
+treated as source code.
 
-### Option B: PostgreSQL Pipeline (Relational Backend)
-To run the traditional relational pipeline in PostgreSQL:
+## Dataset
 
-1. Connect to your PostgreSQL instance via DBeaver. *(Note: For this project, the production PostgreSQL database was hosted on **Microsoft Azure** to facilitate seamless cloud integration with Power BI, but the scripts run perfectly on any local PostgreSQL instance).*
-2. Execute the scripts in numerical order (similar to the DuckDB workflow) to set up the DDL, ingest raw tables, clean data, and construct the final normalized data warehouse used to feed the Power BI dashboard.
+The source dataset contains 10,000 books and approximately six million raw
+ratings. Download the following files from the
+[original Goodbooks-10k repository](https://github.com/zygmuntz/goodbooks-10k):
 
-##  Why This Project?
-As an aspiring data engineer, I built this project to demonstrate my ability to:
-* Explore and assess raw, messy data.
-* Design an idempotent ETL pipeline using SQL.
-* Model a Kimball-style star schema with many-to-many relationships.
-* Handle real-world data quality issues (scientific notation, missing values, duplicates).
-* **Compare a traditional relational engine (PostgreSQL) with a modern columnar OLAP engine (DuckDB) for high-speed analytical queries.**
-* Deploy a cloud-based database architecture (Azure) to support BI tools.
-* Create a clean, well-documented repository suitable for a professional portfolio.
-
-This project mimics the typical workflow in a data team: import CSVs, clean anomalies, normalize entities, and deliver a ready-to-query dimensional model.
-
-##  Dataset
-Source: [goodbooks-10k on GitHub](https://github.com/zygmuntz/goodbooks-10k). A dataset of 10,000 books, 6M+ ratings, tags, and to-read lists from Goodreads.
-
-## Original tables:
 - `books.csv`
 - `ratings.csv`
 - `book_tags.csv`
 - `tags.csv`
 - `to_read.csv`
 
-##  Architecture & Dual Pipeline
-To highlight different Data Engineering techniques, the repository is split into two implementations:
+Store all five CSV files in the same local folder. The folder can be located
+anywhere on your computer; its absolute path is configured in the ingestion
+script and must not be committed with a personal username or machine-specific
+directory.
 
-### 1. PostgreSQL Pipeline (The Cloud BI Backend)
-Used as the robust backend for Data Visualization, deployed on **Microsoft Azure** to provide a scalable cloud database.
-* **Integration:** Natively connected to **Power BI** via the Azure Database for PostgreSQL connector to power the final dashboard.
-* **Methodology:** Standard relational DDL, manual `COPY` ingestion, and traditional CTEs for data cleaning.
+## Prerequisites
 
-### 2. DuckDB Pipeline (The Analytical Engine)
-Built to demonstrate blazing-fast local OLAP analytics, processing 6M+ rows in seconds via DBeaver.
-* **Exploration:** Advanced EDA, anomaly detection, and array unnesting (documented in `goodreads_duckdb_exploration.sql`).
-* **Ingestion & Transformation:** Ingests raw CSVs using relative paths (`01_paths_from_local_to_duckdb.sql`) and leverages DuckDB's `QUALIFY` clause for elegant deduplication (`02_goodreads_duckdb_transformation.sql`).
-* **Star Schema:** Generates surrogate keys on the fly using Window Functions, building an idempotent Kimball model with explicit Primary and Foreign Keys (`03_goodreads_bridges_dimensions_facts_duckdb.sql`).
+- [Git](https://git-scm.com/downloads)
+- [DBeaver Community](https://dbeaver.io/download/)
+- DuckDB support in DBeaver for the DuckDB pipeline
+- A local or cloud PostgreSQL database for the PostgreSQL pipeline
+- A web browser and a Power BI account to use Power BI Service
+- [Power BI Desktop](https://www.microsoft.com/power-platform/products/power-bi/desktop)
+  on a supported Windows system to open the included `.pbix` file (optional)
 
-##  Technologies
-* **Cloud & Databases:** Microsoft Azure, PostgreSQL, DuckDB
-* **Languages:** SQL
-* **Tools:** DBeaver, Power BI, Git
+## Clone the repository
 
-##  Key Design Decisions
-* **Idempotency:** All scripts use `DROP TABLE IF EXISTS` + `CREATE TABLE ... INSERT` (or CTAS) to guarantee reproducible results on multiple runs.
-* **ISBN13 Cleaning:** Scientific notation (e.g., '9.78E+12') is converted back to 13-digit strings with zero-padding using Regex.
-* **Missing Values:** Assigned `'unknown'` for text fields, `-1` for missing publication years.
-* **Duplicate Handling:** Resolved via Window Functions (`ROW_NUMBER()`) keeping the most relevant row (e.g., highest rating).
-* **Many-to-Many Relationships:** Resolved via bridge tables (book–authors, book–tags) to avoid inflating fact table aggregations.
-* **Two Fact Tables:** Segregated events into `fact_ratings` (transactional, measurable) and `fact_to_read` (factless, tracking state/intent).
+```bash
+git clone <REPOSITORY_URL>
+cd GOODREADS_DWH_FANIZZI2026
+```
 
-## 📊 Data Visualization & Business Insights (Power BI)
+Replace `<REPOSITORY_URL>` with the URL of this GitHub repository.
 
-To complete the end-to-end data pipeline, I connected Power BI directly to the **Azure-hosted PostgreSQL data warehouse** to build an interactive dashboard. This layer translates the modeled cloud data into actionable business insights, demonstrating how a robust backend structure supports modern front-end analytics.
+## Option A: run the DuckDB pipeline in DBeaver
 
-### 1. Dashboard Overview: Key Metrics & Top Authors
-The initial view provides a high-level snapshot of the dataset's scale and highlights the most critically acclaimed authors.
+### 1. Create the DBeaver–DuckDB connection
 
-![Dashboard Overview](data_visualization/dashboard_overview.png)
+1. Open DBeaver and select **Database > New Database Connection**.
+2. Search for and select **DuckDB**.
+3. In the **Path** field, select an existing DuckDB database file or choose
+   where DBeaver should create a new persistent database file. For this project,
+   you may select `duckdb/goodreads_duckdb`.
+4. Select **Test Connection**. If DBeaver asks to download the DuckDB JDBC
+   driver, accept the download.
+5. Select **Finish**.
+6. Right-click the DuckDB connection and open **SQL Editor > New SQL Script**.
 
-**Key Insights:**
-* **Massive User Engagement:** The dataset encompasses over 6 million individual ratings across 10,000 books, maintaining a solid average global rating of 3.92.
-* **Top Tier Authors:** Bill Watterson leads the global ranking with a stellar 4.7 average rating, outperforming other highly acclaimed authors.
+See the official
+[DuckDB guide for DBeaver](https://duckdb.org/docs/stable/guides/sql_editors/dbeaver)
+for additional connection details.
 
----
+> **Important:** the DuckDB database path selected in DBeaver and the folder
+> containing the CSV files are two different paths. The first identifies the
+> database file; the second is used by `read_csv_auto()` to locate the source
+> data.
 
-### 2. Popularity vs. Quality (Top 10 Books)
-This visual investigates the relationship between a book's mass appeal (total volume of reviews) and its critical reception (average rating score). 
+### 2. Configure the local CSV path
 
-![Popularity vs Appreciation](data_visualization/populary_vs_appreciation.png)
+Open `duckdb/01_paths_from_local_to_duckdb.sql`. In every `read_csv_auto()`
+query, replace `<YOUR_LOCAL_PATH>` with the absolute path of the folder that
+contains the five CSV files. Keep each CSV filename unchanged.
 
-**Key Insights:**
-* **Volume vs. Score:** The most reviewed books are not necessarily the highest-rated. For example, *The Hunger Games* leads in total reviews, but its average rating is lower compared to some other top 10 blockbusters.
+Examples:
 
----
+```sql
+-- macOS
+'/Users/your_username/Documents/goodbooks-10k/books.csv'
 
-### 📂 Explore the Dashboard Files
-For a deeper dive into the Data Visualization phase, all related files are available in the [`data_visualization/`](data_visualization/) directory:
-* 📊 **[Interactive Power BI File (.pbix)](data_visualization/goodreads_datavisualization.pbix)** - The original Power BI Desktop file (under 20MB, containing the data model and DAX measures).
-* 📄 **[Static Dashboard Export (.pdf)](data_visualization/goodreads_fanizzi_datavisualization.pdf)** - A lightweight PDF export, perfect for a quick review without needing Power BI installed.
+-- Windows: use forward slashes
+'C:/Users/your_username/Documents/goodbooks-10k/books.csv'
+
+-- Linux
+'/home/your_username/goodbooks-10k/books.csv'
+```
+
+Do not commit a personal absolute path. The placeholder makes the script clear
+and reusable without exposing a local username or tying the project to one
+computer.
+
+### 3. Execute the scripts in order
+
+Run the numbered scripts against the same DuckDB connection:
+
+1. `duckdb/01_paths_from_local_to_duckdb.sql` imports the raw CSV files.
+2. `duckdb/02_goodreads_duckdb_transformation.sql` cleans, standardizes, and
+   deduplicates the raw data.
+3. `duckdb/03_goodreads_bridges_dimensions_facts_duckdb.sql` builds the final
+   dimensions, bridge tables, and fact tables.
+
+The optional `duckdb/goodreads_duckdb_exploration.sql` file contains the EDA and
+data-quality queries that informed the transformation logic. Run it after raw
+ingestion if you want to reproduce the analysis; it is not a required pipeline
+step.
+
+### Rerunning the DuckDB pipeline
+
+The transformation and dimensional-model scripts drop and recreate their output
+tables, so they support a reproducible **full-refresh** workflow. The current
+ingestion script uses `CREATE TABLE`, however, and cannot recreate an existing
+raw table. Before rerunning step 1 on the same database, either drop the five raw
+tables or start with a new DuckDB database file.
+
+## Option B: run the PostgreSQL pipeline in DBeaver
+
+### 1. Create the PostgreSQL connection
+
+1. Create or select a PostgreSQL database.
+2. In DBeaver, select **Database > New Database Connection**.
+3. Select **PostgreSQL** and enter the host, port, database, username, and
+   password for your local or cloud instance.
+4. Test and save the connection, then open a new SQL editor for it.
+
+The project was developed with an Azure-hosted PostgreSQL database as the Power
+BI backend, but the SQL model can also be run on a local PostgreSQL instance.
+Azure credentials and connection strings are intentionally not stored in this
+repository.
+
+### 2. Load the source data correctly
+
+Make the five raw tables available in PostgreSQL before building the final
+dimensional model. Be aware that PostgreSQL `COPY FROM '/path/file.csv'` reads
+from the **database server's filesystem**, not automatically from the computer
+running DBeaver.
+
+- For a local PostgreSQL server, `COPY` works when the server process can read
+  the specified files.
+- For Azure or another remote PostgreSQL server, use DBeaver's **Import Data / Data
+  Transfer** feature or the client-side `psql` command `\copy`.
+
+Do not put personal paths, passwords, Azure credentials, or connection strings
+in committed SQL files.
+
+### 3. Execute the scripts in order
+
+1. `postgresql/01_goodreads_dwh_transformation.sql` prepares the cleaned
+   transformation layer.
+2. `postgresql/02_goodreads_dimensions_facts.sql` creates the dimensional model,
+   including keys and relationships.
+
+`postgresql/goodreads_query_exploration.sql` contains optional EDA and
+data-quality checks. It can be run as soon as the raw PostgreSQL tables are
+available and is not part of the required numbered execution sequence.
+
+The PostgreSQL build uses a full-refresh strategy: existing transformation and
+dimensional tables are dropped and recreated. When the DDL is wrapped in a
+transaction, PostgreSQL can commit the complete rebuild as one unit or roll it
+back if a statement fails.
+
+## Transformation rules
+
+| Source | Main rule |
+|---|---|
+| `books` | Trims text, replaces missing text with documented defaults, applies title fallback logic, and standardizes ISBN representations. |
+| `book_tags` | Keeps one row per `(goodreads_book_id, tag_id)`, choosing the highest tag count with `ROW_NUMBER()`. |
+| `ratings` | Keeps one row per `(user_id, book_id)`, choosing the highest rating when duplicates exist. |
+| `tags` | Copies the tag reference data into the transformation layer. |
+| `to_read` | Removes exact duplicate `(user_id, book_id)` pairs with `DISTINCT`. |
+
+DuckDB uses `QUALIFY` to filter the output of `ROW_NUMBER()` directly. The
+equivalent PostgreSQL implementation normally calculates the window function in
+a CTE or subquery and filters it in the outer query.
+
+The highest-rating rule is an explicit conflict-resolution assumption because
+the source data does not provide a reliable rating timestamp. It may bias
+results upward and should be reconsidered if a trustworthy event timestamp
+becomes available.
+
+## Dimensional model
+
+| Object | Grain or purpose |
+|---|---|
+| `dim_books` | One row per book. |
+| `dim_authors` | One row per author extracted from the source authors field. |
+| `dim_tags` | One row per Goodreads tag. |
+| `bridge_book_authors` | One row per book–author relationship. |
+| `bridge_book_tags` | One row per book–tag relationship, including the tag count. |
+| `fact_ratings` | One retained rating per user–book pair. |
+| `fact_to_read` | One user–book “to read” event; a factless fact table. |
+
+The two fact tables are kept separate because they describe different business
+processes and grains. `fact_ratings` contains a numeric measure, while
+`fact_to_read` records the existence of an intent. Combining them would add
+nullable measures and make aggregations less clear.
+
+Bridge tables prevent book-level facts from being duplicated when users filter
+or group results by authors or tags.
+
+## Key engineering decisions
+
+- **Dual implementation:** the same analytical problem is implemented in a
+  local columnar OLAP engine and a relational database.
+- **Full-refresh builds:** downstream tables are dropped and recreated to make
+  development runs predictable.
+- **Explicit grains:** facts and bridges have documented row-level meanings.
+- **Missing values:** text defaults such as `unknown` and the numeric sentinel
+  `-1` are documented; consumers must treat `-1` as an unknown year, not a real
+  publication year.
+- **Deduplication:** window functions apply deterministic business rules to
+  duplicate business keys.
+- **Many-to-many modeling:** author and tag relationships are represented by
+  bridges instead of duplicating rating facts.
+- **BI separation:** Power BI reads the PostgreSQL dimensional layer; DuckDB is
+  an independent local analytical implementation.
+
+## Data visualization and business insights
+
+The PostgreSQL pipeline was managed from macOS through DBeaver, and its
+Azure-hosted dimensional model was used as the dashboard data source. The report
+was created with **Power BI Service (the online version)** because Power BI
+Desktop could not be installed on the macOS Monterey computer used for this
+project.
+
+This choice made it possible to build and publish the visualization from a web
+browser while keeping PostgreSQL as the analytical backend. To reproduce the
+report, connect Power BI Service to your own populated PostgreSQL instance and
+update the data-source settings. Depending on where PostgreSQL is hosted, the
+connection may require a supported data gateway.
+
+### Dashboard overview
+
+![Dashboard overview](data_visualization/dashboard_overview.png)
+
+The overview presents the dataset scale, overall rating metrics, and the authors
+with the highest average ratings in the current report. The dashboard reports an
+overall average rating of approximately 3.92 and places Bill Watterson among the
+highest-rated authors.
+
+### Popularity versus appreciation
+
+![Popularity versus appreciation](data_visualization/popularity_vs_appreciation.png)
+
+This view compares rating volume with average rating. It shows that the books
+with the greatest engagement are not necessarily the books with the highest
+average scores. For example, *The Hunger Games* has very high rating volume but
+does not have the highest average rating among the displayed titles.
+
+### Dashboard files
+
+- [Interactive Power BI file](data_visualization/goodreads_datavisualization.pbix)
+- [Static dashboard export](data_visualization/goodreads_fanizzi_datavisualization.pdf)
+
+## Technologies
+
+- **Databases:** PostgreSQL, DuckDB
+- **Cloud:** Microsoft Azure Database for PostgreSQL
+- **Language:** SQL
+- **Tools:** DBeaver, Power BI, Git
+- **Modeling:** Kimball-style dimensional modeling, fact constellation, bridge
+  tables, transaction fact, and factless fact
+
+
+## Project purpose
+
+This project demonstrates the ability to explore raw data, document data-quality
+assumptions, implement SQL transformations in two database engines, design an
+analytical dimensional model, deploy a cloud database, and expose curated data
+through a Power BI report.
+
+## Attribution
+
+Dataset: [Goodbooks-10k by zygmuntz](https://github.com/zygmuntz/goodbooks-10k).
+Refer to the source repository for its original documentation and usage terms.
